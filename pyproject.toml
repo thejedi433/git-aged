@@ -1,0 +1,17 @@
+[project]
+name = "git-aged"
+version = "0.1.0"
+description = "Find stale git repos (no commits for N days)"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["click>=8.0"]
+
+[project.scripts]
+git-aged = "git_aged.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=7.0", "pytest-cov>=4.0"]
+
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
