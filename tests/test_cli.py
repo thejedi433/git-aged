@@ -61,3 +61,41 @@ def test_cli_custom_days(tmp_path):
     assert result.exit_code == 0
     assert "old" in result.output
     assert "1 stale repo(s) found" in result.output
+
+
+def test_cli_exclude_flag(tmp_path):
+    """CLI --exclude flag filters out matching repos."""
+    runner = CliRunner()
+
+    # Create two old repos
+    for name in ["repo-keep", "repo-skip"]:
+        repo = tmp_path / name
+        repo.mkdir()
+        subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
+        subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=repo, check=True, capture_output=True)
+        subprocess.run(["git", "config", "user.name", "Test"], cwd=repo, check=True, capture_output=True)
+        (repo / "f.txt").write_text("x")
+        subprocess.run(["git", "add", "."], cwd=repo, check=True, capture_output=True)
+        from datetime import datetime, timezone, timedelta
+        old_date = (datetime.now(timezone.utc) - timedelta(days=50)).strftime("%Y-%m-%dT%H:%M:%S")
+        env = {"GIT_AUTHOR_DATE": old_date, "GIT_COMMITTER_DATE": old_date}
+        subprocess.run(["git", "commit", "-m", "old"], cwd=repo, check=True, capture_output=True, env=env)
+
+    # Without exclude: both repos shown
+    result = runner.invoke(main, ["--days", "30", str(tmp_path)])
+    assert result.exit_code == 0
+    assert "repo-keep" in result.output
+    assert "repo-skip" in result.output
+    assert "2 stale repo(s) found" in result.output
+
+    # With exclude: only one repo shown
+    result = runner.invoke(main, ["--days", "30", "--exclude", "repo-skip", str(tmp_path)])
+    assert result.exit_code == 0
+    assert "repo-keep" in result.output
+    assert "repo-skip" not in result.output
+    assert "1 stale repo(s) found" in result.output
+
+    # Multiple exclude patterns
+    result = runner.invoke(main, ["--days", "30", "-e", "repo-*", str(tmp_path)])
+    assert result.exit_code == 0
+    assert "No repos older than 30 days" in result.output

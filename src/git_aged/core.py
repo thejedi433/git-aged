@@ -2,6 +2,7 @@
 
 import subprocess
 from datetime import datetime, timezone
+from fnmatch import fnmatch
 from pathlib import Path
 
 
@@ -26,12 +27,25 @@ def get_last_commit_days(repo_path: Path) -> int:
         return -1
 
 
-def find_repos(root: Path, min_days: int) -> list[tuple[Path, int]]:
+def _is_excluded(repo_path: Path, exclude_patterns: list[str]) -> bool:
+    """Return True if repo name matches any exclude pattern."""
+    name = repo_path.name
+    return any(fnmatch(name, pat) for pat in exclude_patterns)
+
+
+def find_repos(
+    root: Path,
+    min_days: int,
+    exclude_patterns: list[str] | None = None,
+) -> list[tuple[Path, int]]:
     """Find all git repos under root with age >= min_days."""
     repos = []
+    exclude = exclude_patterns or []
     for git_dir in root.rglob(".git"):
         if git_dir.is_dir():
             repo_path = git_dir.parent
+            if _is_excluded(repo_path, exclude):
+                continue
             days = get_last_commit_days(repo_path)
             if days >= min_days:
                 repos.append((repo_path, days))

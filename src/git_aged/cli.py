@@ -9,9 +9,11 @@ from .core import find_repos
 @click.argument("root", type=click.Path(exists=True, file_okay=False), default=".")
 @click.option("--days", "-d", default=30, help="Minimum stale threshold in days (default: 30)")
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON")
-def main(root: str, days: int, as_json: bool) -> None:
+@click.option("--exclude", "-e", multiple=True, help="Exclude repos matching glob pattern (repeatable)")
+def main(root: str, days: int, as_json: bool, exclude: tuple[str, ...]) -> None:
     """Find git repos with no commits for at least DAYS days."""
-    repos = find_repos(Path(root).resolve(), days)
+    exclude_patterns = list(exclude) if exclude else None
+    repos = find_repos(Path(root).resolve(), days, exclude_patterns)
 
     if as_json:
         import json

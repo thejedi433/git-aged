@@ -17,6 +17,9 @@ git-aged /path/to/search
 # Custom threshold
 git-aged --days 90 ~/projects
 
+# Exclude repos matching glob patterns (repeatable)
+git-aged --exclude "fork-*" --exclude "test-*" ~/projects
+
 # JSON output
 git-aged --json ~/projects
 ```
