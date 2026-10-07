@@ -33,10 +33,19 @@ def _is_excluded(repo_path: Path, exclude_patterns: list[str]) -> bool:
     return any(fnmatch(name, pat) for pat in exclude_patterns)
 
 
+def _get_depth(repo_path: Path, root: Path) -> int:
+    """Return the depth of repo_path relative to root."""
+    try:
+        return len(repo_path.relative_to(root).parts)
+    except ValueError:
+        return 0
+
+
 def find_repos(
     root: Path,
     min_days: int,
     exclude_patterns: list[str] | None = None,
+    max_depth: int | None = None,
 ) -> list[tuple[Path, int]]:
     """Find all git repos under root with age >= min_days."""
     repos = []
@@ -46,6 +55,10 @@ def find_repos(
             repo_path = git_dir.parent
             if _is_excluded(repo_path, exclude):
                 continue
+            if max_depth is not None:
+                depth = _get_depth(repo_path, root)
+                if depth > max_depth:
+                    continue
             days = get_last_commit_days(repo_path)
             if days >= min_days:
                 repos.append((repo_path, days))

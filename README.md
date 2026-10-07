@@ -20,6 +20,9 @@ git-aged --days 90 ~/projects
 # Exclude repos matching glob patterns (repeatable)
 git-aged --exclude "fork-*" --exclude "test-*" ~/projects
 
+# Limit search depth (1 = direct children only)
+git-aged --max-depth 2 ~/projects
+
 # JSON output
 git-aged --json ~/projects
 ```

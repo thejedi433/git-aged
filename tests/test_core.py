@@ -144,3 +144,61 @@ def test_get_last_commit_days_handles_bad_output(tmp_path):
     with patch("git_aged.core.subprocess.run", return_value=mock_result):
         days = get_last_commit_days(repo)
         assert days == -1
+
+
+def test_get_depth():
+    """_get_depth returns correct depth relative to root."""
+    from git_aged.core import _get_depth
+    root = Path("/some/root")
+    repo1 = Path("/some/root/repo")
+    repo2 = Path("/some/root/sub/repo")
+    repo3 = Path("/some/root/sub/sub2/repo")
+    assert _get_depth(repo1, root) == 1
+    assert _get_depth(repo2, root) == 2
+    assert _get_depth(repo3, root) == 3
+
+
+def test_find_repos_with_max_depth(tmp_path):
+    """find_repos respects max_depth limit."""
+    # Create repos at different depths
+    for depth, name in [(1, "shallow"), (2, "medium"), (3, "deep")]:
+        if depth == 1:
+            repo = tmp_path / name
+        elif depth == 2:
+            repo = tmp_path / "sub1" / name
+            repo.parent.mkdir(parents=True, exist_ok=True)
+        else:
+            repo = tmp_path / "sub1" / "sub2" / name
+            repo.parent.mkdir(parents=True, exist_ok=True)
+        repo.mkdir(parents=True, exist_ok=True)
+        subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
+        subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=repo, check=True, capture_output=True)
+        subprocess.run(["git", "config", "user.name", "Test"], cwd=repo, check=True, capture_output=True)
+        (repo / "f.txt").write_text("x")
+        subprocess.run(["git", "add", "."], cwd=repo, check=True, capture_output=True)
+        old_date = (datetime.now(timezone.utc) - timedelta(days=50)).strftime("%Y-%m-%dT%H:%M:%S")
+        env = {"GIT_AUTHOR_DATE": old_date, "GIT_COMMITTER_DATE": old_date}
+        subprocess.run(["git", "commit", "-m", "old"], cwd=repo, check=True, capture_output=True, env=env)
+
+    # Without max_depth: all repos found
+    repos = find_repos(tmp_path, min_days=30)
+    assert len(repos) == 3
+
+    # With max_depth=1: only shallow repo found
+    repos = find_repos(tmp_path, min_days=30, max_depth=1)
+    assert len(repos) == 1
+    assert repos[0][0].name == "shallow"
+
+    # With max_depth=2: shallow and medium repos found
+    repos = find_repos(tmp_path, min_days=30, max_depth=2)
+    assert len(repos) == 2
+    names = {r[0].name for r in repos}
+    assert names == {"shallow", "medium"}
+
+
+def test_get_depth_unrelated_path():
+    """_get_depth returns 0 when repo is not under root."""
+    from git_aged.core import _get_depth
+    root = Path("/some/root")
+    unrelated = Path("/other/place/repo")
+    assert _get_depth(unrelated, root) == 0

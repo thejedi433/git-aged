@@ -10,10 +10,11 @@ from .core import find_repos
 @click.option("--days", "-d", default=30, help="Minimum stale threshold in days (default: 30)")
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON")
 @click.option("--exclude", "-e", multiple=True, help="Exclude repos matching glob pattern (repeatable)")
-def main(root: str, days: int, as_json: bool, exclude: tuple[str, ...]) -> None:
+@click.option("--max-depth", "-m", type=int, default=None, help="Maximum search depth (default: unlimited)")
+def main(root: str, days: int, as_json: bool, exclude: tuple[str, ...], max_depth: int | None) -> None:
     """Find git repos with no commits for at least DAYS days."""
     exclude_patterns = list(exclude) if exclude else None
-    repos = find_repos(Path(root).resolve(), days, exclude_patterns)
+    repos = find_repos(Path(root).resolve(), days, exclude_patterns, max_depth)
 
     if as_json:
         import json
